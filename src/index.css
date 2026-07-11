@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #121212;
+    color: #e8e8e8;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Prevents text selection flash on drag interactions */
+    user-select: none;
+  }
+
+  /* Allow text selection only inside editor-like zones */
+  .selectable {
+    user-select: text;
+  }
+
+  ::selection {
+    background-color: #3f3f46;
+    color: #f9fafb;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: #2a2a2a;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #404040;
+  }
+}
+
+/* ── Component Utilities ──────────────────────────────────────────────────── */
+@layer components {
+  /* Drag region for frameless window — maps to -webkit-app-region */
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  /* Panel separator — subtle vertical divider */
+  .panel-divider {
+    @apply w-px bg-border flex-shrink-0;
+  }
+
+  /* Sidebar nav item */
+  .nav-item {
+    @apply flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-text-secondary
+           cursor-pointer transition-colors duration-150 hover:bg-overlay hover:text-text-primary;
+  }
+
+  .nav-item.active {
+    @apply bg-overlay text-text-primary;
+  }
+
+  /* Glass-style badge */
+  .badge {
+    @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded text-2xs
+           font-medium bg-accent/10 text-accent border border-accent/20;
+  }
+
+  /* Primary action button */
+  .btn-primary {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium
+           bg-accent text-white transition-all duration-150 no-drag
+           hover:bg-accent-dim active:scale-95 focus-visible:outline-none
+           focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1
+           focus-visible:ring-offset-canvas;
+  }
+
+  /* Ghost / secondary button */
+  .btn-ghost {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium
+           text-text-secondary border border-border transition-all duration-150 no-drag
+           hover:bg-overlay hover:text-text-primary active:scale-95
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50;
+  }
+}
