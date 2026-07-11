@@ -1,6 +1,6 @@
 # Noteer
 
-**Noteer** is a local-first, hyper-minimalist Markdown second-brain application. Designed as a distraction-free Obsidian alternative, Noteer gives you absolute ownership over your thoughts without the noise of bloated interfaces.
+**Noteer** is a local-first, hyper-minimalist Markdown second-brain application. Gives you absolute ownership over your thoughts without the noise of bloated interfaces.
 
 > [!WARNING]  
 > **Pre-Alpha / Experimental Concept**  
