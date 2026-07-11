@@ -175,6 +175,12 @@ export interface ElectronAPI {
    * Searches the vault for the given query and returns a list of results.
    */
   searchVault: (query: string) => Promise<SearchResult[]>;
+
+  // ── Phase 14: Tags ───────────────────────────────────────────────────────
+  /**
+   * Returns all unique tags from the vault with their file counts.
+   */
+  getAllTags: () => Promise<TagInfo[]>;
 }
 
 export interface GraphNode {
@@ -196,4 +202,10 @@ export interface SearchResult {
   filePath: string;
   fileName: string;
   snippet: string;
+}
+
+export interface TagInfo {
+  tag: string;
+  count: number;
+  files: string[];
 }

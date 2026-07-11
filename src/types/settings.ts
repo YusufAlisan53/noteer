@@ -174,6 +174,10 @@ export interface FileStoreState {
   searchResults: SearchResult[];
   /** Phase 13: True while the search IPC call is in flight. */
   isSearching: boolean;
+  /** Phase 14: All unique tags in the vault with counts. */
+  allTagsData: import('./index').TagInfo[];
+  /** Phase 14: Currently active tag filters. */
+  selectedTags: string[];
 }
 
 /** Write-side (commands) for the file/vault state. */
@@ -246,11 +250,19 @@ export interface FileStoreActions {
    */
   fetchGraphData: () => Promise<void>;
 
-  // ── Phase 13: Full-Text Search ────────────────────────────────────────────
+  // ── Phase 13: Full-Text Search ────────────────────────────────────────────────
   /** Triggers the IPC search and updates searchResults. */
   executeSearch: (query: string) => Promise<void>;
   /** Sets the search query input value without immediately executing the search. */
   setSearchQuery: (query: string) => void;
+
+  // ── Phase 14: Tags ─────────────────────────────────────────────────────
+  /** Fetches the full tag list from the main process and updates allTagsData. */
+  fetchAllTags: () => Promise<void>;
+  /** Toggles a tag in the selectedTags filter. */
+  toggleTagFilter: (tag: string) => void;
+  /** Clears all active tag filters. */
+  clearTagFilters: () => void;
 }
 
 export type FileStore = FileStoreState & FileStoreActions;

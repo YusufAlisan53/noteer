@@ -64,6 +64,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── Phase 13: Full-Text Search ────────────────────────────────────────────
   searchVault: (query: string) => ipcRenderer.invoke('search-vault', query),
 
+  // ── Phase 14: Tags ────────────────────────────────────────────────────────
+  getAllTags: (): Promise<{ tag: string; count: number; files: string[] }[]> =>
+    ipcRenderer.invoke('get-all-tags'),
+
 } satisfies ElectronAPI);
 
 // ─── Global Type Augmentation ─────────────────────────────────────────────────

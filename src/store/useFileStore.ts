@@ -108,6 +108,8 @@ const INITIAL_STATE: FileStoreState = {
   searchQuery:        '',
   searchResults:      [],
   isSearching:        false,
+  allTagsData:        [],
+  selectedTags:       [],
 };
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -135,6 +137,8 @@ export const useFileStore = create<FileStore>((set, get) => ({
       const allTags = Array.from(tagsSet).sort();
 
       set({ tree: nodes, isTreeLoading: false, allTags });
+      // Refresh rich tag data from main process index
+      get().fetchAllTags();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load file tree.';
       console.error('[FileStore] refreshTree:', message);
@@ -347,6 +351,27 @@ export const useFileStore = create<FileStore>((set, get) => ({
       set({ searchResults: [], isSearching: false });
     }
   },
+
+  // ── Phase 14: Tags ────────────────────────────────────────────────────
+  fetchAllTags: async () => {
+    try {
+      const tags = await window.electronAPI.getAllTags();
+      set({ allTagsData: tags });
+    } catch (err) {
+      console.error('[FileStore] fetchAllTags error:', err);
+    }
+  },
+
+  toggleTagFilter: (tag: string) => {
+    const { selectedTags } = get();
+    const next = selectedTags.includes(tag)
+      ? selectedTags.filter((t) => t !== tag)
+      : [...selectedTags, tag];
+    set({ selectedTags: next });
+  },
+
+  clearTagFilters: () => set({ selectedTags: [] }),
+
 }));
 
 // ─── Selector helpers ─────────────────────────────────────────────────────────
@@ -366,6 +391,8 @@ export const selectOpenTabs           = (s: FileStore) => s.openTabs;
 export const selectSearchQuery        = (s: FileStore) => s.searchQuery;
 export const selectSearchResults      = (s: FileStore) => s.searchResults;
 export const selectIsSearching        = (s: FileStore) => s.isSearching;
+export const selectAllTagsData        = (s: FileStore) => s.allTagsData;
+export const selectSelectedTags       = (s: FileStore) => s.selectedTags;
 
 export const selectActiveFileNode = (s: FileStore): FileNode | null => {
   if (!s.activeFilePath) return null;

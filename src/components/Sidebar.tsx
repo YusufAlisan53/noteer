@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { FileNode, SearchResult } from '../types';
+import type { FileNode } from '../types';
 import {
   useFileStore,
   selectTree,
@@ -8,6 +8,8 @@ import {
   selectSearchQuery,
   selectSearchResults,
   selectIsSearching,
+  selectAllTagsData,
+  selectSelectedTags,
 } from '../store/useFileStore';
 
 // ─── Inline Input ─────────────────────────────────────────────────────────────
@@ -298,8 +300,8 @@ export default function Sidebar() {
 
   const [creatingAtRoot, setCreatingAtRoot] = useState<'file' | 'folder' | null>(null);
   
-  // ── View Toggle ──────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'files' | 'search'>('files');
+  // ── View Toggle ──────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'files' | 'search' | 'tags'>('files');
 
   // ── Debounced Search ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -311,13 +313,23 @@ export default function Sidebar() {
     return () => clearTimeout(timer);
   }, [searchQuery, activeTab, executeSearch]);
 
-  // ── Flat search ──────────────────────────────────────────────────────────
+  // ── Tag Filter State ──────────────────────────────────────────────
+  const allTagsData    = useFileStore(selectAllTagsData);
+  const selectedTags   = useFileStore(selectSelectedTags);
+  const toggleTagFilter = useFileStore((s) => s.toggleTagFilter);
+  const clearTagFilters = useFileStore((s) => s.clearTagFilters);
+
+  // ── Flat file list for tag filtering ─────────────────────────────
   const flatFiles = useCallback((nodes: FileNode[]): FileNode[] =>
     nodes.flatMap((n) => n.type === 'file' ? [n] : flatFiles(n.children ?? [])),
   []);
 
-  const filteredFiles = searchQuery.trim()
-    ? flatFiles(tree).filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const tagFilteredFiles = selectedTags.length > 0
+    ? flatFiles(tree).filter((f) =>
+        selectedTags.every((tag) =>
+          (f.tags ?? []).includes(tag)
+        )
+      )
     : null;
 
   // ── Root-level creation ──────────────────────────────────────────────────
@@ -360,6 +372,17 @@ export default function Sidebar() {
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           Search
+        </button>
+        <button
+          className={`flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-[11px] font-medium transition-all duration-200 ${
+            activeTab === 'tags' ? 'bg-overlay text-text-primary shadow-sm' : 'text-text-muted hover:bg-overlay/50 hover:text-text-secondary'
+          }`}
+          onClick={() => setActiveTab('tags')}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
+          </svg>
+          Tags
         </button>
       </div>
 
@@ -407,7 +430,7 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* ── Tree / Search Results ────────────────────────────────────────── */}
+      {/* ── Tree / Search Results / Tags Pane ────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto py-1" role="tree">
         {activeTab === 'search' ? (
           <div className="px-2 py-1">
@@ -457,6 +480,93 @@ export default function Sidebar() {
             ) : (
               <p className="text-[10px] text-text-muted px-2 py-2">Type above to search across your vault.</p>
             )}
+          </div>
+        ) : activeTab === 'tags' ? (
+          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            {/* Active filter bar */}
+            {selectedTags.length > 0 && (
+              <div className="px-2 py-1.5 border-b border-border flex-shrink-0 flex items-center gap-1.5 flex-wrap bg-blue-950/20">
+                {selectedTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTagFilter(tag)}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-blue-900/30 text-blue-400 border border-blue-900/50 hover:bg-blue-900/50 transition-colors duration-150"
+                  >
+                    #{tag}
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                ))}
+                <button
+                  onClick={clearTagFilters}
+                  className="ml-auto text-[9px] text-text-muted hover:text-text-secondary px-1.5 py-0.5 rounded border border-border hover:border-border/80 transition-colors duration-150"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+
+            {/* Filtered files list */}
+            {tagFilteredFiles && (
+              <div className="flex-shrink-0 border-b border-border">
+                <div className="px-3 py-1.5">
+                  <p className="text-[9px] font-semibold text-text-muted uppercase tracking-widest mb-1.5">
+                    {tagFilteredFiles.length === 0 ? 'No matches' : `${tagFilteredFiles.length} note${tagFilteredFiles.length !== 1 ? 's' : ''}`}
+                  </p>
+                  {tagFilteredFiles.length > 0 && (
+                    <ul className="flex flex-col gap-0.5 max-h-32 overflow-y-auto">
+                      {tagFilteredFiles.map((f) => (
+                        <li key={f.path}>
+                          <button
+                            className="no-drag w-full text-left flex items-center gap-1.5 px-1.5 py-1 rounded text-[11px] text-gray-300 hover:bg-[#1a1a1a] hover:text-white transition-colors duration-100"
+                            onClick={() => openFile(f)}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-text-muted">
+                              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                              <polyline points="13 2 13 9 20 9" />
+                            </svg>
+                            <span className="truncate">{f.name.replace(/\.md$/, '')}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tag cloud */}
+            <div className="flex-1 overflow-y-auto px-2 py-2">
+              {allTagsData.length === 0 ? (
+                <div className="px-2 py-6 text-center">
+                  <p className="text-[11px] text-text-muted">No tags found.</p>
+                  <p className="text-[10px] text-text-muted/60 mt-1">
+                    Add <code className="px-1 bg-surface rounded text-[9px]">#tags</code> to your notes.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5 p-1">
+                  {allTagsData.map(({ tag, count }) => {
+                    const isActive = selectedTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => toggleTagFilter(tag)}
+                        className={`group flex items-center gap-1 px-2 py-1 rounded-full text-[11px] border transition-all duration-150 cursor-pointer ${
+                          isActive
+                            ? 'bg-blue-900/20 text-blue-400 border-blue-900/50 shadow-sm'
+                            : 'bg-[#1a1a1a] text-gray-400 border-[#2a2a2a] hover:bg-[#252525] hover:text-gray-300 hover:border-[#333]'
+                        }`}
+                      >
+                        <span>#{tag}</span>
+                        <span className={`text-[9px] rounded-full px-1 py-px ${
+                          isActive ? 'text-blue-300/70' : 'text-gray-600 group-hover:text-gray-500'
+                        }`}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <>

@@ -46,7 +46,13 @@ const SETTINGS_FILE = 'settings.json';
  */
 const backlinkIndex = new Map<string, Set<string>>();
 
-/** Regex that matches [[Note Name]] wiki-link syntax (non-greedy). */
+/**
+ * In-memory global tag index.
+ * tag (lowercase) → Set of absolute file paths that contain this tag.
+ */
+const tagIndex = new Map<string, Set<string>>();
+
+/** Regex matching [[wikilink]] syntax. */
 const WIKILINK_RE = /\[\[([^\]]+)\]\]/g;
 
 /**
@@ -78,11 +84,51 @@ function indexFile(sourcePath: string, content: string): void {
 }
 
 /**
+ * Extracts all tags from a file:
+ * - YAML frontmatter `tags: [...]` via gray-matter
+ * - Inline `#hashtag` syntax (ignores tags inside code fences)
+ */
+function extractTagsFromContent(content: string, frontmatterTags: string[]): string[] {
+  const tags = new Set<string>(frontmatterTags.map(t => t.toLowerCase()));
+
+  // Strip code fences to avoid matching #tags inside code blocks
+  const bodyWithoutCode = content
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`\n]+`/g, '');
+
+  const INLINE_TAG_RE = /(?<![\w\/\\])#([a-zA-Z0-9_-]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = INLINE_TAG_RE.exec(bodyWithoutCode)) !== null) {
+    if (m[1]) tags.add(m[1].toLowerCase());
+  }
+
+  return Array.from(tags);
+}
+
+/**
+ * Updates the global tagIndex for a given file.
+ * Removes stale entries then adds fresh ones.
+ */
+function indexFileTags(filePath: string, tags: string[]): void {
+  // Remove file from all existing tag sets
+  for (const [tag, files] of tagIndex) {
+    files.delete(filePath);
+    if (files.size === 0) tagIndex.delete(tag);
+  }
+  // Add to new sets
+  for (const tag of tags) {
+    if (!tagIndex.has(tag)) tagIndex.set(tag, new Set());
+    tagIndex.get(tag)!.add(filePath);
+  }
+}
+
+/**
  * Walks the entire vault and builds the initial backlink index.
  * Runs once at startup after the vault is ready.
  */
 async function buildFullIndex(vaultPath: string): Promise<void> {
   backlinkIndex.clear();
+  tagIndex.clear();
 
   async function walk(dir: string): Promise<void> {
     let entries: fs.Dirent[];
@@ -95,6 +141,13 @@ async function buildFullIndex(vaultPath: string): Promise<void> {
         try {
           const content = await fs.promises.readFile(abs, 'utf-8');
           indexFile(abs, content);
+          // Tag index
+          const parsed = matter(content);
+          const frontmatterTags = Array.isArray(parsed.data?.tags)
+            ? parsed.data.tags.filter((t: any) => typeof t === 'string')
+            : [];
+          const tags = extractTagsFromContent(content, frontmatterTags);
+          indexFileTags(abs, tags);
         } catch { /* skip unreadable files */ }
       }
     }
@@ -102,6 +155,7 @@ async function buildFullIndex(vaultPath: string): Promise<void> {
 
   await walk(vaultPath);
   console.log(`[Main] Backlink index built — ${backlinkIndex.size} unique targets tracked.`);
+  console.log(`[Main] Tag index built — ${tagIndex.size} unique tags tracked.`);
 }
 
 /**
@@ -187,9 +241,13 @@ async function scanDirectory(dirPath: string): Promise<FileNode[]> {
         modifiedAt = stat.mtime.toISOString(); 
         const content = await fs.promises.readFile(abs, 'utf-8');
         const parsed = matter(content);
-        if (parsed.data && Array.isArray(parsed.data.tags)) {
-          tags = parsed.data.tags.filter((t: any) => typeof t === 'string');
-        }
+        const frontmatterTags: string[] = Array.isArray(parsed.data?.tags)
+          ? parsed.data.tags.filter((t: any) => typeof t === 'string')
+          : [];
+        const allFileTags = extractTagsFromContent(content, frontmatterTags);
+        tags = allFileTags;
+        // Keep tag index fresh on every tree scan
+        indexFileTags(abs, allFileTags);
       } catch { /* ignore */ }
       nodes.push({ id: abs, name: entry.name, type: 'file', path: abs, modifiedAt, tags });
     }
@@ -449,6 +507,17 @@ function registerIpcHandlers(vaultPath: string, settingsPath: string): void {
     
     await searchDir(vaultPath);
     return results;
+  });
+
+  // ── Phase 14: Tags ───────────────────────────────────────────────────────
+  ipcMain.handle('get-all-tags', async () => {
+    const result: { tag: string; count: number; files: string[] }[] = [];
+    for (const [tag, files] of tagIndex) {
+      result.push({ tag, count: files.size, files: Array.from(files) });
+    }
+    // Sort alphabetically
+    result.sort((a, b) => a.tag.localeCompare(b.tag));
+    return result;
   });
 }
 
