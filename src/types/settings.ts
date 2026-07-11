@@ -13,7 +13,7 @@ export interface UISettings {
   /** Which activity bar panel was last active. */
   activePanel: 'files' | 'search' | 'settings';
   /** The current view mode of the main workspace */
-  viewMode: 'edit' | 'split' | 'preview';
+  viewMode: 'edit' | 'split' | 'preview' | 'canvas';
 }
 
 /** Editor behaviour preferences. */

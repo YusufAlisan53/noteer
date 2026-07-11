@@ -3,13 +3,13 @@ import type { FileNode } from '../types';
 import {
   useFileStore,
   selectTree,
-  selectActiveFilePath,
   selectAllTags,
   selectSearchQuery,
   selectSearchResults,
   selectIsSearching,
   selectAllTagsData,
   selectSelectedTags,
+  selectActiveFilePath,
 } from '../store/useFileStore';
 
 // ─── Inline Input ─────────────────────────────────────────────────────────────
@@ -287,10 +287,8 @@ export default function Sidebar() {
   // All data comes from the store — zero prop drilling
   const tree            = useFileStore(selectTree);
   const allTags         = useFileStore(selectAllTags);
-  const activeFilePath  = useFileStore(selectActiveFilePath);
   const openFile        = useFileStore((s) => s.openFile);
   const refreshTree     = useFileStore((s) => s.refreshTree);
-  const triggerDailyNote = useFileStore((s) => s.triggerDailyNote);
 
   const searchQuery     = useFileStore(selectSearchQuery);
   const searchResults   = useFileStore(selectSearchResults);

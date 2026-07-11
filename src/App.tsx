@@ -14,7 +14,8 @@ import {
   selectIsGraphOpen,
 } from './store/useFileStore';
 import TitleBar from './components/TitleBar';
-const GraphView = lazy(() => import('./components/GraphView'));
+const GraphView        = lazy(() => import('./components/GraphView'));
+const ExcalidrawCanvas = lazy(() => import('./components/ExcalidrawCanvas'));
 import TabBar from './components/TabBar';
 import Outline from './components/Outline';
 import StatusBar from './components/StatusBar';
@@ -42,17 +43,6 @@ const IconFiles = () => (
   </svg>
 );
 
-const IconClose = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-  </svg>
-);
-
-const IconZap = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-  </svg>
-);
 
 const IconLoader = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-spin">
@@ -387,6 +377,23 @@ export default function App() {
         <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
           {!zenMode && <TabBar />}
           <div className="flex flex-row flex-1 min-h-0 h-full overflow-hidden relative">
+
+            {/* ── Canvas Mode (Excalidraw) ──────────────────────────────── */}
+            {ui.viewMode === 'canvas' ? (
+              <Suspense
+                fallback={
+                  <div className="flex flex-1 h-full w-full bg-[#121212] items-center justify-center gap-2.5 text-text-muted">
+                    <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg>
+                    <span className="text-xs">Loading canvas…</span>
+                  </div>
+                }
+              >
+                <ExcalidrawCanvas />
+              </Suspense>
+            ) : (
+              <>
             {/* ── Editor ── */}
             {ui.viewMode !== 'preview' && (
               <div className={`flex flex-col h-full overflow-hidden ${ui.viewMode === 'split' ? 'w-1/2' : 'flex-1 w-full'}`}>
@@ -416,6 +423,8 @@ export default function App() {
               <div className={`flex flex-col h-full overflow-hidden ${ui.viewMode === 'split' ? 'w-1/2' : 'flex-1 w-full'}`}>
                 <Preview />
               </div>
+            )}
+              </>
             )}
           </div>
         </div>
