@@ -126,7 +126,7 @@ export type SettingsStore = SettingsStoreState & SettingsStoreActions;
 
 // ─── File Store Interfaces ────────────────────────────────────────────────────
 
-import type { FileNode, GraphData } from './index';
+import type { FileNode, GraphData, SearchResult } from './index';
 
 /** Read-side (queries) for the file/vault state. */
 export interface FileStoreState {
@@ -168,6 +168,12 @@ export interface FileStoreState {
    * List of currently open tabs.
    */
   openTabs: { path: string; name: string }[];
+  /** Phase 13: The current search query in the sidebar. */
+  searchQuery: string;
+  /** Phase 13: Results from the latest full-text search. */
+  searchResults: SearchResult[];
+  /** Phase 13: True while the search IPC call is in flight. */
+  isSearching: boolean;
 }
 
 /** Write-side (commands) for the file/vault state. */
@@ -239,6 +245,12 @@ export interface FileStoreActions {
    * updating `graphData` in state.
    */
   fetchGraphData: () => Promise<void>;
+
+  // ── Phase 13: Full-Text Search ────────────────────────────────────────────
+  /** Triggers the IPC search and updates searchResults. */
+  executeSearch: (query: string) => Promise<void>;
+  /** Sets the search query input value without immediately executing the search. */
+  setSearchQuery: (query: string) => void;
 }
 
 export type FileStore = FileStoreState & FileStoreActions;

@@ -169,6 +169,12 @@ export interface ElectronAPI {
    * Returns the absolute path of the note.
    */
   openDailyNote: () => Promise<string>;
+
+  // ── Phase 13: Full-Text Search ────────────────────────────────────────────
+  /**
+   * Searches the vault for the given query and returns a list of results.
+   */
+  searchVault: (query: string) => Promise<SearchResult[]>;
 }
 
 export interface GraphNode {
@@ -184,4 +190,10 @@ export interface GraphLink {
 export interface GraphData {
   nodes: GraphNode[];
   links: GraphLink[];
+}
+
+export interface SearchResult {
+  filePath: string;
+  fileName: string;
+  snippet: string;
 }

@@ -1,10 +1,13 @@
-import { useState, useCallback, useRef } from 'react';
-import type { FileNode } from '../types';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import type { FileNode, SearchResult } from '../types';
 import {
   useFileStore,
   selectTree,
   selectActiveFilePath,
   selectAllTags,
+  selectSearchQuery,
+  selectSearchResults,
+  selectIsSearching,
 } from '../store/useFileStore';
 
 // ─── Inline Input ─────────────────────────────────────────────────────────────
@@ -287,8 +290,26 @@ export default function Sidebar() {
   const refreshTree     = useFileStore((s) => s.refreshTree);
   const triggerDailyNote = useFileStore((s) => s.triggerDailyNote);
 
+  const searchQuery     = useFileStore(selectSearchQuery);
+  const searchResults   = useFileStore(selectSearchResults);
+  const isSearching     = useFileStore(selectIsSearching);
+  const setSearchQuery  = useFileStore((s) => s.setSearchQuery);
+  const executeSearch   = useFileStore((s) => s.executeSearch);
+
   const [creatingAtRoot, setCreatingAtRoot] = useState<'file' | 'folder' | null>(null);
-  const [searchQuery, setSearchQuery]       = useState('');
+  
+  // ── View Toggle ──────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'files' | 'search'>('files');
+
+  // ── Debounced Search ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeTab === 'search') {
+        executeSearch(searchQuery);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeTab, executeSearch]);
 
   // ── Flat search ──────────────────────────────────────────────────────────
   const flatFiles = useCallback((nodes: FileNode[]): FileNode[] =>
@@ -316,138 +337,159 @@ export default function Sidebar() {
       className="flex flex-col bg-panel border-r border-border flex-shrink-0 overflow-hidden"
       style={{ width: '100%' }} // width is controlled by the parent flex container in App.tsx
     >
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border flex-shrink-0">
-        <span className="text-[10px] font-semibold text-text-muted uppercase tracking-widest">
-          Vault
-        </span>
-        <div className="no-drag flex items-center gap-1">
-          <button
-            id="btn-new-note-root"
-            title="New Note"
-            className="w-5 h-5 rounded flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-overlay transition-all duration-200 ease-out active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-gray-700 text-base leading-none"
-            onClick={() => setCreatingAtRoot('file')}
-          >
-            +
-          </button>
-          <button
-            id="btn-new-folder-root"
-            title="New Folder"
-            className="w-5 h-5 rounded flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-overlay transition-all duration-200 ease-out active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-gray-700"
-            onClick={() => setCreatingAtRoot('folder')}
-          >
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-              <line x1="12" y1="11" x2="12" y2="17" />
-              <line x1="9" y1="14" x2="15" y2="14" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* ── Search ──────────────────────────────────────────────────────── */}
-      <div className="px-2 py-1.5 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-1.5 px-2 h-6 bg-surface rounded border border-border focus-within:border-accent/50 transition-all duration-200 ease-out">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted flex-shrink-0">
+      {/* ── Header / View Toggle ────────────────────────────────────────── */}
+      <div className="flex items-center px-3 py-2 border-b border-border flex-shrink-0 gap-2">
+        <button
+          className={`flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-[11px] font-medium transition-all duration-200 ${
+            activeTab === 'files' ? 'bg-overlay text-text-primary shadow-sm' : 'text-text-muted hover:bg-overlay/50 hover:text-text-secondary'
+          }`}
+          onClick={() => setActiveTab('files')}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+          Files
+        </button>
+        <button
+          className={`flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-[11px] font-medium transition-all duration-200 ${
+            activeTab === 'search' ? 'bg-overlay text-text-primary shadow-sm' : 'text-text-muted hover:bg-overlay/50 hover:text-text-secondary'
+          }`}
+          onClick={() => setActiveTab('search')}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
-          <input
-            id="sidebar-search"
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search notes…"
-            className="selectable no-drag flex-1 min-w-0 bg-transparent text-xs text-text-primary placeholder:text-text-muted outline-none"
-          />
-          {searchQuery && (
-            <button
-              className="no-drag text-text-muted hover:text-text-secondary transition-all duration-200 ease-out active:scale-90 outline-none focus-visible:ring-1 focus-visible:ring-gray-700"
-              onClick={() => setSearchQuery('')}
-            >
-              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── Daily Note ────────────────────────────────────────────────── */}
-      <div className="px-2 py-1 border-b border-border flex-shrink-0">
-        <button
-          onClick={triggerDailyNote}
-          className="w-full flex items-center justify-center gap-2 h-6 rounded text-xs font-medium text-text-muted hover:text-text-primary hover:bg-overlay/50 transition-all duration-200 ease-out active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-gray-700"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-          Today
+          Search
         </button>
       </div>
 
+      {activeTab === 'files' && (
+        <div className="px-2 py-1.5 border-b border-border flex-shrink-0 flex items-center justify-between">
+          <span className="text-[10px] font-semibold text-text-muted uppercase tracking-widest pl-1">
+            Vault
+          </span>
+          <div className="no-drag flex items-center gap-1">
+            <button
+              id="btn-new-note-root"
+              title="New Note"
+              className="w-5 h-5 rounded flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-overlay transition-all duration-200 ease-out active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-gray-700 text-base leading-none"
+              onClick={() => setCreatingAtRoot('file')}
+            >
+              +
+            </button>
+            <button
+              id="btn-new-folder-root"
+              title="New Folder"
+              className="w-5 h-5 rounded flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-overlay transition-all duration-200 ease-out active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-gray-700"
+              onClick={() => setCreatingAtRoot('folder')}
+            >
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                <line x1="12" y1="11" x2="12" y2="17" />
+                <line x1="9" y1="14" x2="15" y2="14" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Search Input ──────────────────────────────────────────────────────── */}
+      {activeTab === 'search' && (
+        <div className="px-2 py-2 border-b border-border flex-shrink-0 bg-[#161616]">
+          <input
+            autoFocus
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search in all notes..."
+            className="selectable no-drag w-full bg-[#1a1a1a] border border-[#2a2a2a] text-gray-200 outline-none focus:border-gray-500 rounded px-3 py-1.5 transition-all duration-200 text-[11.5px]"
+          />
+        </div>
+      )}
+
       {/* ── Tree / Search Results ────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto py-1" role="tree">
-        {/* Root-level creation input */}
-        {creatingAtRoot && (
-          <InlineInput
-            placeholder={creatingAtRoot === 'file' ? 'Note name…' : 'Folder name…'}
-            paddingLeft={8}
-            onConfirm={handleRootCreate}
-            onCancel={() => setCreatingAtRoot(null)}
-          />
-        )}
+        {activeTab === 'search' ? (
+          <div className="px-2 py-1">
+            {isSearching ? (
+              <p className="text-[10px] text-text-muted italic px-2 py-2">Searching...</p>
+            ) : searchResults.length > 0 ? (
+              <ul className="flex flex-col gap-1">
+                {searchResults.map((res, i) => {
+                  // Basic highlight formatting for the snippet
+                  const matchIdx = res.snippet.toLowerCase().indexOf(searchQuery.toLowerCase());
+                  let before = res.snippet;
+                  let match = '';
+                  let after = '';
+                  if (matchIdx !== -1 && searchQuery) {
+                    before = res.snippet.substring(0, matchIdx);
+                    match = res.snippet.substring(matchIdx, matchIdx + searchQuery.length);
+                    after = res.snippet.substring(matchIdx + searchQuery.length);
+                  }
 
-        {filteredFiles ? (
-          filteredFiles.length > 0 ? (
-            <ul>
-              {filteredFiles.map((file) => (
-                <li key={file.id}>
-                  <button
-                    className={`
-                      no-drag w-full text-left flex items-center h-[26px] px-3 gap-2
-                      transition-colors duration-100
-                      ${file.path === activeFilePath
-                        ? 'bg-overlay/80 border-l-2 border-accent text-text-primary'
-                        : 'border-l-2 border-transparent hover:bg-overlay/40 text-text-secondary/70'}
-                    `}
-                    onClick={() => openFile(file)}
-                  >
-                    <span className={`block w-[5px] h-[5px] rounded-full flex-shrink-0 ${
-                      file.path === activeFilePath ? 'bg-accent' : 'bg-border'
-                    }`} />
-                    <span className="text-[11.5px] truncate">
-                      {file.name.replace(/\.md$/, '')}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-[10px] text-text-muted italic px-3 py-2">No results.</p>
-          )
+                  return (
+                    <li key={`${res.filePath}-${i}`}>
+                      <button
+                        className="no-drag w-full text-left p-2 rounded hover:bg-[#1a1a1a] transition-all duration-150 border border-transparent hover:border-[#2a2a2a] flex flex-col gap-1 outline-none focus-visible:bg-[#1a1a1a]"
+                        onClick={() => openFile({ id: res.filePath, path: res.filePath, name: res.fileName, type: 'file' })}
+                      >
+                        <span className="text-[11.5px] font-medium text-gray-300 truncate w-full">
+                          {res.fileName.replace(/\.md$/, '')}
+                        </span>
+                        <span className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed">
+                          {match ? (
+                            <>
+                              {before}
+                              <span className="text-blue-400 bg-blue-900/30 rounded px-0.5">{match}</span>
+                              {after}
+                            </>
+                          ) : (
+                            res.snippet
+                          )}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : searchQuery.trim() ? (
+              <p className="text-[10px] text-text-muted italic px-2 py-2">No matches found.</p>
+            ) : (
+              <p className="text-[10px] text-text-muted px-2 py-2">Type above to search across your vault.</p>
+            )}
+          </div>
         ) : (
-          tree.length > 0 ? (
-            <ul>
-              {tree.map((node) => (
-                <TreeNode key={node.id} node={node} depth={0} />
-              ))}
-            </ul>
-          ) : (
-            <div className="px-3 py-6 text-center">
-              <p className="text-[11px] text-text-muted">Your vault is empty.</p>
-              <p className="text-[10px] text-text-muted mt-1 opacity-60">
-                Press <kbd className="px-1 rounded bg-surface border border-border font-mono">+</kbd> to add a note.
-              </p>
-            </div>
-          )
+          <>
+            {/* Root-level creation input */}
+            {creatingAtRoot && (
+              <InlineInput
+                placeholder={creatingAtRoot === 'file' ? 'Note name…' : 'Folder name…'}
+                paddingLeft={8}
+                onConfirm={handleRootCreate}
+                onCancel={() => setCreatingAtRoot(null)}
+              />
+            )}
+
+            {tree.length > 0 ? (
+              <ul>
+                {tree.map((node) => (
+                  <TreeNode key={node.id} node={node} depth={0} />
+                ))}
+              </ul>
+            ) : (
+              <div className="px-3 py-6 text-center">
+                <p className="text-[11px] text-text-muted">Your vault is empty.</p>
+                <p className="text-[10px] text-text-muted mt-1 opacity-60">
+                  Press <kbd className="px-1 rounded bg-surface border border-border font-mono">+</kbd> to add a note.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* ── Tags Section ────────────────────────────────────────────────── */}
-      {!filteredFiles && allTags.length > 0 && (
+      {/* ── Tags Section (Only in Files View) ────────────────────────────────── */}
+      {activeTab === 'files' && allTags.length > 0 && (
         <div className="px-3 py-2 border-t border-border flex-shrink-0 max-h-32 overflow-y-auto">
           <div className="text-[10px] font-semibold text-text-muted uppercase tracking-widest mb-2">Tags</div>
           <div className="flex flex-wrap gap-1.5">

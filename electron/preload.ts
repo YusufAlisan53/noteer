@@ -61,6 +61,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── Phase 11: Daily Notes ─────────────────────────────────────────────────
   openDailyNote: () => ipcRenderer.invoke('open-daily-note'),
 
+  // ── Phase 13: Full-Text Search ────────────────────────────────────────────
+  searchVault: (query: string) => ipcRenderer.invoke('search-vault', query),
+
 } satisfies ElectronAPI);
 
 // ─── Global Type Augmentation ─────────────────────────────────────────────────

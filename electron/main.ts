@@ -414,6 +414,42 @@ function registerIpcHandlers(vaultPath: string, settingsPath: string): void {
     
     return notePath;
   });
+
+  // ── Phase 13: Full-Text Search ───────────────────────────────────────────
+  ipcMain.handle('search-vault', async (_e, query: string) => {
+    if (!query || query.trim().length === 0) return [];
+    const results: { filePath: string; fileName: string; snippet: string }[] = [];
+    const lowerQuery = query.toLowerCase();
+
+    async function searchDir(dir: string) {
+      let entries: fs.Dirent[];
+      try { entries = await fs.promises.readdir(dir, { withFileTypes: true }); } catch { return; }
+      for (const entry of entries) {
+        if (entry.name.startsWith('.')) continue;
+        const abs = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          await searchDir(abs);
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          try {
+            const content = await fs.promises.readFile(abs, 'utf-8');
+            const lowerContent = content.toLowerCase();
+            const index = lowerContent.indexOf(lowerQuery);
+            if (index !== -1) {
+              const start = Math.max(0, index - 40);
+              const end = Math.min(content.length, index + query.length + 40);
+              let snippet = content.substring(start, end).replace(/\n/g, ' ');
+              if (start > 0) snippet = '...' + snippet;
+              if (end < content.length) snippet = snippet + '...';
+              results.push({ filePath: abs, fileName: entry.name, snippet });
+            }
+          } catch { /* skip unreadable files */ }
+        }
+      }
+    }
+    
+    await searchDir(vaultPath);
+    return results;
+  });
 }
 
 // ─── App Lifecycle ────────────────────────────────────────────────────────────

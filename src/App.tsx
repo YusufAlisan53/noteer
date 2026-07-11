@@ -21,9 +21,10 @@ import StatusBar from './components/StatusBar';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
-const IconSearch = () => (
+const IconSidebarToggle = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+    <line x1="9" y1="3" x2="9" y2="21"></line>
   </svg>
 );
 
@@ -66,14 +67,17 @@ type PanelId = 'files' | 'search' | 'settings';
 function ActivityBar({
   activePanel,
   onPanelChange,
+  isSidebarOpen,
+  onToggleSidebar,
 }: {
   activePanel: PanelId;
   onPanelChange: (id: PanelId) => void;
+  isSidebarOpen: boolean;
+  onToggleSidebar: () => void;
 }) {
   const items: { id: PanelId; icon: JSX.Element; title: string }[] = [
     { id: 'files',    icon: <IconFiles />,        title: 'Files' },
-    { id: 'search',   icon: <IconSearch />,        title: 'Search' },
-    { id: 'settings', icon: <IconSettingsIcon />,  title: 'Settings' },
+    { id: 'settings', icon: <IconSettingsIcon />, title: 'Settings' },
   ];
 
   return (
@@ -81,6 +85,14 @@ function ActivityBar({
       id="activity-bar"
       className="flex flex-col items-center gap-1 py-2 w-11 bg-canvas border-r border-border flex-shrink-0"
     >
+      <button
+        title="Toggle Sidebar"
+        onClick={onToggleSidebar}
+        className={`w-8 h-8 mb-2 rounded-md flex items-center justify-center transition-all duration-150 ${isSidebarOpen ? 'text-text-primary bg-overlay' : 'text-text-muted hover:bg-overlay hover:text-text-secondary'}`}
+      >
+        <IconSidebarToggle />
+      </button>
+
       {items.map((item) => (
         <button
           key={item.id}
@@ -227,55 +239,6 @@ function SettingsPanel() {
   );
 }
 
-// ─── IpcTestPanel ─────────────────────────────────────────────────────────────
-
-function IpcTestPanel() {
-  const [log, setLog]         = useState<{ text: string; type: 'info' | 'success' | 'error' }[]>([
-    { text: 'IPC bridge ready.', type: 'info' },
-  ]);
-  const [loading, setLoading] = useState(false);
-  const [visible, setVisible] = useState(true);
-
-  const sendPing = useCallback(async () => {
-    setLoading(true);
-    setLog((p) => [...p, { text: '→ ping…', type: 'info' }]);
-    try {
-      const r = await window.electronAPI.ping({ message: 'hello' });
-      setLog((p) => [...p, { text: `← ${r.message} ts:${r.timestamp}`, type: 'success' }]);
-    } catch (err) {
-      setLog((p) => [...p, { text: `✗ ${err instanceof Error ? err.message : String(err)}`, type: 'error' }]);
-    } finally { setLoading(false); }
-  }, []);
-
-  if (!visible) return null;
-
-  const colorMap = { info: 'text-text-muted', success: 'text-success', error: 'text-danger' } as const;
-
-  return (
-    <div id="ipc-test-panel" className="no-drag absolute bottom-4 right-4 w-64 bg-panel border border-border rounded-xl shadow-card overflow-hidden animate-fade-in">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-surface">
-        <IconZap />
-        <span className="text-xs font-semibold text-text-primary">IPC Debug</span>
-        <span className="ml-auto badge">Phase 4</span>
-        <button className="no-drag w-4 h-4 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors" onClick={() => setVisible(false)} title="Dismiss">
-          <IconClose />
-        </button>
-      </div>
-      <div id="ipc-log" className="selectable px-3 py-2 h-16 overflow-y-auto font-mono space-y-0.5">
-        {log.map((e, i) => (
-          <p key={i} className={`text-2xs leading-relaxed ${colorMap[e.type]}`}>{e.text}</p>
-        ))}
-      </div>
-      <div className="px-3 py-2 border-t border-border flex justify-end">
-        <button id="btn-send-ping" onClick={sendPing} disabled={loading}
-          className="btn-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100">
-          <IconZap />{loading ? 'Sending…' : 'Ping'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ─── Root App ─────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -329,11 +292,24 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler);
   }, [handlePanelChange]);
 
-  // ── Sidebar resize ────────────────────────────────────────────────────────
+  // ── Sidebar resize & toggle ───────────────────────────────────────────────
   const handleSidebarResize = useCallback((dx: number) => {
-    const next = Math.max(160, Math.min(480, ui.sidebarWidth + dx));
-    setUI({ sidebarWidth: next });
+    const next = ui.sidebarWidth + dx;
+    if (next < 100) {
+      setUI({ sidebarWidth: 0 }); // Snap closed
+    } else {
+      setUI({ sidebarWidth: Math.max(160, Math.min(480, next)) });
+    }
   }, [ui.sidebarWidth, setUI]);
+
+  const handleToggleSidebar = useCallback(() => {
+    if (activePanel !== 'files') {
+      handlePanelChange('files');
+      if (ui.sidebarWidth === 0) setUI({ sidebarWidth: 260 });
+    } else {
+      setUI({ sidebarWidth: ui.sidebarWidth > 0 ? 0 : 260 });
+    }
+  }, [activePanel, handlePanelChange, ui.sidebarWidth, setUI]);
 
   // Allow ESC to exit Zen Mode
   useEffect(() => {
@@ -389,8 +365,13 @@ export default function App() {
         {/* Only show ActivityBar, Sidebar, Settings if not in Zen Mode */}
         {!zenMode && (
           <>
-            <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />
-            {activePanel === 'files' && (
+            <ActivityBar 
+              activePanel={activePanel} 
+              onPanelChange={handlePanelChange} 
+              isSidebarOpen={ui.sidebarWidth > 0 && activePanel === 'files'}
+              onToggleSidebar={handleToggleSidebar}
+            />
+            {activePanel === 'files' && ui.sidebarWidth > 0 && (
               <>
                 <div style={{ width: ui.sidebarWidth, flexShrink: 0, display: 'flex' }}>
                   <Sidebar />
@@ -442,8 +423,6 @@ export default function App() {
         {/* ── Outline Sidebar ── */}
         {!zenMode && showOutline && <Outline />}
 
-        {/* IPC debug overlay (hidden in Zen Mode) */}
-        {!zenMode && <IpcTestPanel />}
       </div>
 
       {/* ── Status Bar ── */}

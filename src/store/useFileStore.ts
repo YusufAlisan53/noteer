@@ -105,6 +105,9 @@ const INITIAL_STATE: FileStoreState = {
   isGraphOpen:        false,
   graphData:          null,
   openTabs:           [],
+  searchQuery:        '',
+  searchResults:      [],
+  isSearching:        false,
 };
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -324,6 +327,26 @@ export const useFileStore = create<FileStore>((set, get) => ({
       console.error('[FileStore] fetchGraphData:', err);
     }
   },
+
+  // ── Phase 13: Full-Text Search ─────────────────────────────────────────
+  setSearchQuery: (query: string) => {
+    set({ searchQuery: query });
+  },
+
+  executeSearch: async (query: string) => {
+    if (!query.trim()) {
+      set({ searchResults: [], isSearching: false });
+      return;
+    }
+    set({ isSearching: true });
+    try {
+      const results = await window.electronAPI.searchVault(query);
+      set({ searchResults: results, isSearching: false });
+    } catch (err) {
+      console.error('[FileStore] executeSearch error:', err);
+      set({ searchResults: [], isSearching: false });
+    }
+  },
 }));
 
 // ─── Selector helpers ─────────────────────────────────────────────────────────
@@ -340,6 +363,9 @@ export const selectRecentFiles        = (s: FileStore) => s.recentFiles;
 export const selectIsGraphOpen        = (s: FileStore) => s.isGraphOpen;
 export const selectGraphData          = (s: FileStore) => s.graphData;
 export const selectOpenTabs           = (s: FileStore) => s.openTabs;
+export const selectSearchQuery        = (s: FileStore) => s.searchQuery;
+export const selectSearchResults      = (s: FileStore) => s.searchResults;
+export const selectIsSearching        = (s: FileStore) => s.isSearching;
 
 export const selectActiveFileNode = (s: FileStore): FileNode | null => {
   if (!s.activeFilePath) return null;
