@@ -1,3 +1,6 @@
+/* KaTeX math rendering styles */
+@import 'katex/dist/katex.min.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -106,3 +109,53 @@
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50;
   }
 }
+
+/* ── Prose Noteer: Math, Tables, Mermaid ────────────────────────── */
+
+/* Display math blocks: prevent overflow on narrow containers */
+.prose-noteer .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+  margin: 1rem 0;
+}
+
+/* Inline math: keep baseline aligned */
+.prose-noteer .katex {
+  font-size: 1em;
+}
+
+/* Table: already styled via component overrides, but ensure base reset */
+.prose-noteer table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+/* Task-list: remove native bullets */
+.prose-noteer ul:has(> li.task-list-item) {
+  padding-left: 0;
+  list-style: none;
+}
+
+/* Mermaid SVG: allow responsive scaling */
+.prose-noteer [id^="mermaid-"] {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Blockquote: subtle left accent border */
+.prose-noteer blockquote {
+  border-left: 3px solid #3f3f46;
+  padding-left: 1rem;
+  color: #9ca3af;
+  margin: 1rem 0;
+  font-style: italic;
+}
+
+/* Horizontal rule */
+.prose-noteer hr {
+  border: none;
+  border-top: 1px solid #2a2a2a;
+  margin: 1.5rem 0;
+}
+
