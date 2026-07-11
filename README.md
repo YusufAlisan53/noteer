@@ -45,7 +45,7 @@ Noteer is built for those who want a serene, distraction-free environment to map
 
 ## 🇹🇷 Türkçe
 
-**Noteer**, yerel odaklı (local-first) ve dikkat dağıtmayan, hiper-minimalist bir İkinci Beyin (Second Brain) uygulamasıdır. Obsidian'a alternatif olarak geliştirilmiş olup, gereksiz karmaşadan uzak bir ortamda düşüncelerinizi haritalamanızı sağlar.
+**Noteer**, yerel odaklı (local-first) ve dikkat dağıtmayan, hiper-minimalist bir İkinci Beyin (Second Brain) uygulamasıdır. Gereksiz karmaşadan uzak bir ortamda düşüncelerinizi haritalamanızı sağlar.
 
 > [!WARNING]  
 > **Pre-Alpha / Deneysel Konsept**  
